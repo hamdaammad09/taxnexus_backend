@@ -9,5 +9,7 @@ app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/invoice", require("./routes/invoiceRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+const port = process.env.PORT ? Number(process.env.PORT) : 5000;
+app.listen(port, () => console.log(`Server running on port ${port}`));
