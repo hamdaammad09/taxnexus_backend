@@ -205,5 +205,38 @@ app.post("/debug-create-tables", async (req, res) => {
   }
 });
 
+// Debug: Add missing columns to invoices table
+app.post("/debug-fix-invoices-table", async (req, res) => {
+  try {
+    // Add invoice_data column if missing
+    await pool.query(`
+      ALTER TABLE invoices 
+      ADD COLUMN IF NOT EXISTS invoice_data JSONB
+    `);
+
+    // Add invoice_ref_no column if missing
+    await pool.query(`
+      ALTER TABLE invoices 
+      ADD COLUMN IF NOT EXISTS invoice_ref_no VARCHAR(100)
+    `);
+
+    // Add fbr_invoice_number column if missing
+    await pool.query(`
+      ALTER TABLE invoices 
+      ADD COLUMN IF NOT EXISTS fbr_invoice_number VARCHAR(100)
+    `);
+
+    // Add status column if missing
+    await pool.query(`
+      ALTER TABLE invoices 
+      ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+    `);
+
+    res.json({ message: "Invoices table fixed successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const port = process.env.PORT ? Number(process.env.PORT) : 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
