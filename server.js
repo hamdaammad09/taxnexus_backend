@@ -66,6 +66,22 @@ app.get("/debug-user/:email", async (req, res) => {
   }
 });
 
+// Debug: Create test company (for setup only - remove in production)
+app.post("/debug-create-company", async (req, res) => {
+  try {
+    const { name, ntn, api_token } = req.body;
+
+    const result = await pool.query(
+      "INSERT INTO companies (name, ntn, api_token, environment) VALUES ($1,$2,$3,$4) RETURNING id, name, ntn, environment",
+      [name, ntn, api_token || "test-token", "sandbox"]
+    );
+
+    res.json({ message: "Company created", company: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Debug: Create test user (for setup only - remove in production)
 app.post("/debug-create-user", async (req, res) => {
   try {
@@ -78,6 +94,16 @@ app.post("/debug-create-user", async (req, res) => {
     );
 
     res.json({ message: "User created", user: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Debug: List all companies
+app.get("/debug-companies", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT id, name, ntn, environment FROM companies");
+    res.json({ companies: result.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
