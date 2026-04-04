@@ -7,6 +7,8 @@ const pool = process.env.DATABASE_URL
       ssl: {
         rejectUnauthorized: false,
       },
+      // Force IPv4 to avoid IPv6 connection issues
+      family: 4,
     })
   : new Pool({
       user: process.env.DB_USER,
