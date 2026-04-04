@@ -49,7 +49,7 @@ app.get("/test-db", async (req, res) => {
 app.get("/debug-user/:email", async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, email, company_id, role, created_at FROM users WHERE email=$1",
+      "SELECT id, email, password, company_id, role, created_at FROM users WHERE email=$1",
       [req.params.email]
     );
 
@@ -57,9 +57,48 @@ app.get("/debug-user/:email", async (req, res) => {
       return res.json({ exists: false, message: "User not found" });
     }
 
+    const user = result.rows[0];
+    const passwordFormat = user.password.startsWith('$2') ? 'bcrypt' : 'plain text';
+
     res.json({
       exists: true,
-      user: result.rows[0],
+      user: {
+        id: user.id,
+        email: user.email,
+        company_id: user.company_id,
+        role: user.role,
+        created_at: user.created_at,
+        password_format: passwordFormat,
+        password_preview: user.password.substring(0, 20) + '...',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Debug: Test password comparison
+app.post("/debug-test-password", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const result = await pool.query(
+      "SELECT password FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ error: "User not found" });
+    }
+
+    const hashedPassword = result.rows[0].password;
+    const isValid = await bcrypt.compare(password, hashedPassword);
+
+    res.json({
+      email,
+      password_stored: hashedPassword.substring(0, 30) + '...',
+      password_format: hashedPassword.startsWith('$2') ? 'bcrypt' : 'plain text',
+      comparison_result: isValid,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
