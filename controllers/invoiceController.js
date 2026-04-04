@@ -337,9 +337,42 @@ exports.sendInvoiceToFBR = async (req, res) => {
       return res.status(422).json({ message: "Local validation failed", errors: localErrors });
     }
 
-    const validation = await validateInvoice(payload, company.api_token, {
-      companyId: req.user.companyId,
-    });
+    // Skip FBR API if using test token (for development/testing)
+    const isTestToken = company.api_token === "test-token" || 
+                        company.api_token === "test-token-for-development-only" ||
+                        company.api_token?.startsWith("test-");
+
+    if (isTestToken) {
+      console.log("Test token detected - skipping FBR API call in send endpoint");
+
+      await pool.query(
+        "UPDATE invoices SET status=$1, fbr_invoice_number=$2 WHERE id=$3 AND company_id=$4",
+        ["sent", "TEST-MODE-NO-FBR", id, req.user.companyId]
+      );
+
+      return res.json({
+        message: "Invoice marked as sent (test mode - FBR skipped)",
+        invoiceId: id,
+        status: "sent",
+        note: "FBR API skipped - using test token",
+      });
+    }
+
+    let validation;
+    try {
+      validation = await validateInvoice(payload, company.api_token, {
+        companyId: req.user.companyId,
+      });
+    } catch (err) {
+      if (err.response?.status === 401) {
+        return res.status(401).json({
+          message: "FBR API authentication failed",
+          error: "Invalid or expired API token. Please update your company API token.",
+          invoiceId: id,
+        });
+      }
+      throw err;
+    }
 
     if (validation?.data?.validationResponse?.status === "Invalid") {
       const errors = extractValidationErrors(validation.data);
@@ -368,6 +401,10 @@ exports.sendInvoiceToFBR = async (req, res) => {
 
     return res.json(result.data);
   } catch (err) {
-    return res.status(500).json({ message: "Failed to send invoice to FBR" });
+    console.error("SEND INVOICE ERROR:", err);
+    return res.status(500).json({ 
+      message: "Failed to send invoice to FBR",
+      error: err.message,
+    });
   }
 };
