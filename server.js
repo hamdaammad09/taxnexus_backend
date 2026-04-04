@@ -148,5 +148,62 @@ app.get("/debug-companies", async (req, res) => {
   }
 });
 
+// Debug: Create uploads table (if missing)
+app.post("/debug-create-tables", async (req, res) => {
+  try {
+    // Create uploads table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS uploads (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        file_name VARCHAR(255),
+        file_path VARCHAR(500),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create invoices table (if not exists)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS invoices (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        invoice_ref_no VARCHAR(100),
+        invoice_data JSONB,
+        fbr_invoice_number VARCHAR(100),
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create validation_errors table (if not exists)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS validation_errors (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER REFERENCES invoices(id),
+        row_no INTEGER,
+        field_name VARCHAR(100),
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // Create api_logs table (if not exists)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS api_logs (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        request JSONB,
+        response JSONB,
+        status_code INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    res.json({ message: "Tables created successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const port = process.env.PORT ? Number(process.env.PORT) : 5000;
 app.listen(port, () => console.log(`Server running on port ${port}`));
