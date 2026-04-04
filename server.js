@@ -148,6 +148,21 @@ app.get("/debug-companies", async (req, res) => {
   }
 });
 
+// Debug: List recent invoices with data
+app.get("/debug-invoices", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, company_id, invoice_ref_no, status, invoice_data, created_at 
+      FROM invoices 
+      ORDER BY id DESC 
+      LIMIT 10
+    `);
+    res.json({ invoices: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Debug: Create uploads table (if missing)
 app.post("/debug-create-tables", async (req, res) => {
   try {

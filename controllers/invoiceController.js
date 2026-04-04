@@ -129,6 +129,29 @@ exports.uploadInvoice = async (req, res) => {
       });
     }
 
+    // Skip FBR API if using test token (for development/testing)
+    const isTestToken = company.api_token === "test-token" || 
+                        company.api_token === "test-token-for-development-only" ||
+                        company.api_token?.startsWith("test-");
+
+    if (isTestToken) {
+      console.log("Test token detected - skipping FBR API call");
+
+      if (invoiceId) {
+        await pool.query(
+          "UPDATE invoices SET status=$1, fbr_invoice_number=$2 WHERE id=$3",
+          ["validated", "TEST-MODE-NO-FBR", invoiceId]
+        );
+      }
+
+      return res.json({
+        message: "Invoice validated (test mode - FBR skipped)",
+        invoiceId,
+        status: "validated",
+        note: "FBR API skipped - using test token",
+      });
+    }
+
     let validation;
     try {
       validation = await validateInvoice(invoice, company.api_token, {
