@@ -6,7 +6,15 @@ const bcrypt = require("bcrypt");
 
 const app = express();
 
-app.use(cors());
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "https://frontend-tax-nexus.vercel.app",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/api/auth", require("./routes/authRoutes"));
