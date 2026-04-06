@@ -11,6 +11,7 @@ const corsOptions = {
   origin: [
     "https://frontend-tax-nexus.vercel.app",
     "https://frontend-tax-nexus-git-main-sundus-projects-871ec62d.vercel.app",
+    "https://frontend-tax-nexus-h1q855bcr-sundus-projects-871ec62d.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean),
   credentials: true,
