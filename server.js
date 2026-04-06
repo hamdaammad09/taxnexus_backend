@@ -228,34 +228,84 @@ app.post("/debug-create-tables", async (req, res) => {
   }
 });
 
-// Debug: Add missing columns to invoices table
-app.post("/debug-fix-invoices-table", async (req, res) => {
+// Debug: Create or update all required tables
+app.post("/debug-setup-database", async (req, res) => {
   try {
-    // Add invoice_data column if missing
+    // 1. Create companies table
     await pool.query(`
-      ALTER TABLE invoices 
-      ADD COLUMN IF NOT EXISTS invoice_data JSONB
+      CREATE TABLE IF NOT EXISTS companies (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        ntn VARCHAR(50) NOT NULL,
+        address TEXT,
+        province VARCHAR(100),
+        api_token VARCHAR(500),
+        environment VARCHAR(50) DEFAULT 'sandbox',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
-    // Add invoice_ref_no column if missing
+    // 2. Create users table
     await pool.query(`
-      ALTER TABLE invoices 
-      ADD COLUMN IF NOT EXISTS invoice_ref_no VARCHAR(100)
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'user',
+        company_id INTEGER REFERENCES companies(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
-    // Add fbr_invoice_number column if missing
+    // 3. Create invoices table
     await pool.query(`
-      ALTER TABLE invoices 
-      ADD COLUMN IF NOT EXISTS fbr_invoice_number VARCHAR(100)
+      CREATE TABLE IF NOT EXISTS invoices (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        invoice_ref_no VARCHAR(100),
+        invoice_data JSONB,
+        fbr_invoice_number VARCHAR(100),
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
-    // Add status column if missing
+    // 4. Create validation_errors table
     await pool.query(`
-      ALTER TABLE invoices 
-      ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'
+      CREATE TABLE IF NOT EXISTS validation_errors (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER REFERENCES invoices(id),
+        row_no INTEGER,
+        field_name VARCHAR(100),
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
 
-    res.json({ message: "Invoices table fixed successfully" });
+    // 5. Create uploads table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS uploads (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        file_name VARCHAR(255),
+        file_path VARCHAR(500),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    // 6. Create api_logs table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS api_logs (
+        id SERIAL PRIMARY KEY,
+        company_id INTEGER REFERENCES companies(id),
+        request JSONB,
+        response JSONB,
+        status_code INTEGER,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    res.json({ message: "All tables created successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
