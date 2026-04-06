@@ -8,7 +8,11 @@ const app = express();
 
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "https://frontend-tax-nexus.vercel.app",
+  origin: [
+    "https://frontend-tax-nexus.vercel.app",
+    "https://frontend-tax-nexus-git-main-sundus-projects-871ec62d.vercel.app",
+    process.env.FRONTEND_URL,
+  ].filter(Boolean),
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
