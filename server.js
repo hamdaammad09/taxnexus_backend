@@ -7,13 +7,27 @@ const bcrypt = require("bcrypt");
 const app = express();
 
 // CORS configuration for production
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  : [
+      "https://frontend-tax-nexus.vercel.app",
+      "https://frontend-tax-nexus-git-main-sundus-projects-871ec62d.vercel.app",
+      "https://frontend-tax-nexus-h1q855bcr-sundus-projects-871ec62d.vercel.app",
+      "http://localhost:3000",
+    ];
+
 const corsOptions = {
-  origin: [
-    "https://frontend-tax-nexus.vercel.app",
-    "https://frontend-tax-nexus-git-main-sundus-projects-871ec62d.vercel.app",
-    "https://frontend-tax-nexus-h1q855bcr-sundus-projects-871ec62d.vercel.app",
-    process.env.FRONTEND_URL,
-  ].filter(Boolean),
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log("CORS blocked origin:", origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -137,16 +151,53 @@ app.post("/debug-create-company", async (req, res) => {
 // Debug: Create test user (for setup only - remove in production)
 app.post("/debug-create-user", async (req, res) => {
   try {
-    const { email, password, companyId } = req.body;
+    const { email, password, companyId, role } = req.body;
     const hashed = await bcrypt.hash(password, 10);
+    const userRole = role || "user";
 
     const result = await pool.query(
       "INSERT INTO users (email, password, company_id, role) VALUES ($1,$2,$3,$4) RETURNING id, email, company_id, role",
-      [email, hashed, companyId, "admin"]
+      [email, hashed, companyId, userRole]
     );
 
     res.json({ message: "User created", user: result.rows[0] });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Debug: Test create company WITHOUT auth (for frontend testing)
+app.post("/test-create-company", async (req, res) => {
+  try {
+    const { name, ntn, address, province, api_token, environment } = req.body;
+
+    const result = await pool.query(
+      "INSERT INTO companies (name, ntn, address, province, api_token, environment) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+      [name, ntn, address || null, province || null, api_token || "test-token", environment || "sandbox"]
+    );
+
+    res.json({ message: "Company created", company: result.rows[0] });
+  } catch (err) {
+    console.error("Create company error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Debug: Test create user WITHOUT auth (for frontend testing)
+app.post("/test-create-user", async (req, res) => {
+  try {
+    const { email, password, companyId, role } = req.body;
+    const hashed = await bcrypt.hash(password, 10);
+    const userRole = role || "user";
+
+    const result = await pool.query(
+      "INSERT INTO users (email, password, company_id, role) VALUES ($1,$2,$3,$4) RETURNING id, email, company_id, role",
+      [email, hashed, companyId, userRole]
+    );
+
+    res.json({ message: "User created", user: result.rows[0] });
+  } catch (err) {
+    console.error("Create user error:", err);
     res.status(500).json({ error: err.message });
   }
 });
