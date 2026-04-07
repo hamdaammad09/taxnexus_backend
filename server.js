@@ -45,6 +45,52 @@ app.get("/", (req, res) => {
   res.send("TaxNexus Backend is running 🚀");
 });
 
+// Debug: Check CORS configuration
+app.get("/debug-cors", (req, res) => {
+  res.json({
+    allowedOrigins,
+    frontendUrlEnv: process.env.FRONTEND_URL || "NOT SET",
+    message: "CORS debug info",
+  });
+});
+
+// Debug: Test login without auth (for troubleshooting)
+app.post("/test-login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("Test login attempt:", email);
+
+    const result = await pool.query(
+      "SELECT id, email, password, role, company_id FROM users WHERE email=$1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    const user = result.rows[0];
+    const valid = await bcrypt.compare(password, user.password);
+
+    if (!valid) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    res.json({
+      message: "Login successful (test endpoint)",
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        companyId: user.company_id,
+      },
+    });
+  } catch (err) {
+    console.error("Test login error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Test database connection
 app.get("/test-db", async (req, res) => {
   try {
