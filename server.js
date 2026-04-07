@@ -13,6 +13,7 @@ const allowedOrigins = process.env.FRONTEND_URL
       "https://frontend-tax-nexus.vercel.app",
       "https://frontend-tax-nexus-git-main-sundus-projects-871ec62d.vercel.app",
       "https://frontend-tax-nexus-h1q855bcr-sundus-projects-871ec62d.vercel.app",
+      "https://frontend-tax-nexus-pu2okwedg-sundus-projects-871ec62d.vercel.app",
       "http://localhost:3000",
     ];
 
